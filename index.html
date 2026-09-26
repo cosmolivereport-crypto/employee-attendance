@@ -16,6 +16,16 @@
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#fff}
 body{font-family:Arial,Helvetica,sans-serif}
 iframe{display:block;width:100%;height:100dvh;height:100vh;border:0;background:#fff}
+
+#installOverlay{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55)}
+#installCard{width:min(420px,100%);background:#fff;border-radius:22px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center}
+#installIcon{width:82px;height:82px;border-radius:20px;margin:0 auto 14px;display:block}
+#installCard h2{margin:0 0 8px;font-size:24px;color:#198754}
+#installCard p{margin:8px 0;color:#555;line-height:1.5;font-size:15px}
+#installButton{width:100%;border:0;border-radius:13px;padding:15px;margin-top:14px;background:#198754;color:#fff;font-size:17px;font-weight:bold}
+#installLater{width:100%;border:0;background:#fff;color:#777;padding:12px;margin-top:5px;font-size:14px}
+#installHelp{display:none;margin-top:14px;padding:12px;border-radius:12px;background:#f4f7f6;color:#444;font-size:14px;line-height:1.55;text-align:left}
+#installHelp strong{color:#198754}
 </style>
 </head>
 <body>
@@ -24,6 +34,94 @@ iframe{display:block;width:100%;height:100dvh;height:100vh;border:0;background:#
 if("serviceWorker"in navigator){
  window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));
 }
+</script>
+
+<div id="installOverlay">
+  <div id="installCard">
+    <img id="installIcon" src="./icon-192.png" alt="Employee Attendance">
+    <h2>Install Employee Attendance</h2>
+    <p id="installText">Attendance app ko phone mein install karein taaki next time direct app ki tarah open ho.</p>
+    <button id="installButton">INSTALL APP</button>
+    <button id="installLater">Continue without installing</button>
+    <div id="installHelp"></div>
+  </div>
+</div>
+
+<script>
+let deferredInstallPrompt=null;
+const overlay=document.getElementById("installOverlay");
+const installButton=document.getElementById("installButton");
+const installLater=document.getElementById("installLater");
+const installHelp=document.getElementById("installHelp");
+const installText=document.getElementById("installText");
+
+function isInstalled(){
+  return window.matchMedia("(display-mode: standalone)").matches ||
+         window.matchMedia("(display-mode: fullscreen)").matches ||
+         window.navigator.standalone===true;
+}
+function isIOS(){return /iphone|ipad|ipod/i.test(navigator.userAgent);}
+function isAndroid(){return /android/i.test(navigator.userAgent);}
+function showInstallOverlay(){if(!isInstalled()) overlay.style.display="flex";}
+
+function showManualInstallInstructions(){
+  installHelp.style.display="block";
+  if(isIOS()){
+    installText.innerText="iPhone/iPad mein Safari ke Share menu se app install karein.";
+    installButton.innerText="HOW TO INSTALL";
+    installHelp.innerHTML="<strong>iPhone / iPad:</strong><br>1. Safari mein ye page open karein.<br>2. Share button dabayein.<br>3. <strong>Add to Home Screen</strong> select karein.<br>4. Add dabayein.<br><br>iPhone par website khud OS install popup force nahi kar sakti.";
+  }else if(isAndroid()){
+    installText.innerText="Agar automatic install popup available nahi hai, browser menu se app install karein.";
+    installButton.innerText="SHOW INSTALL STEPS";
+    installHelp.innerHTML="<strong>Android:</strong><br>Chrome mein ⋮ menu kholein → <strong>Install app</strong> ya <strong>Add to Home screen</strong> select karein.<br><br>Agar option na aaye, page ko Chrome mein open karke dobara try karein.";
+  }else{
+    installText.innerText="Browser ke install option se Employee Attendance ko app ke roop mein add karein.";
+    installButton.innerText="SHOW INSTALL STEPS";
+    installHelp.innerHTML="<strong>Other browser:</strong><br>Browser address bar/menu mein Install / Add to Home Screen option dekhein.";
+  }
+}
+
+window.addEventListener("beforeinstallprompt",function(event){
+  event.preventDefault();
+  deferredInstallPrompt=event;
+  showInstallOverlay();
+});
+
+installButton.addEventListener("click",async function(){
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    const choice=await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt=null;
+    if(choice.outcome==="accepted"){
+      overlay.style.display="none";
+    }else{
+      showManualInstallInstructions();
+    }
+    return;
+  }
+  showManualInstallInstructions();
+});
+
+installLater.addEventListener("click",function(){
+  overlay.style.display="none";
+});
+
+window.addEventListener("appinstalled",function(){
+  overlay.style.display="none";
+  deferredInstallPrompt=null;
+});
+
+window.addEventListener("load",function(){
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("./service-worker.js",{scope:"./"}).catch(function(){});
+  }
+  setTimeout(function(){
+    if(!isInstalled() && !deferredInstallPrompt){
+      showInstallOverlay();
+      showManualInstallInstructions();
+    }
+  },900);
+});
 </script>
 </body>
 </html>
